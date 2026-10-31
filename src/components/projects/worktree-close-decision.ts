@@ -17,9 +17,9 @@ export type SessionRowCloseAction =
   | 'confirm-worktree'
 
 /**
- * CMD+W on a session row of the single session view list. Closing the last
- * open session asks to delete the whole worktree. Other sessions follow the
- * tab rules: empty ones close at once, the rest confirm first.
+ * Closing a session row of the Recent list. Closing the last open session
+ * asks to delete the whole worktree. Other sessions follow the tab rules:
+ * empty ones close at once, the rest confirm first.
  */
 export function decideSessionRowClose(
   session: { id: string; message_count?: number },

@@ -1168,9 +1168,9 @@ pub struct RecentWorktreesResponse {
     pub failed_worktree_ids: Vec<String>,
 }
 
-/// Return a sorted page of recent sessions in one round-trip. Sessions with
-/// no messages are skipped unless `include_empty` is set. The page grows past
-/// `limit` to include every session active after `active_since`.
+/// Return a sorted page of recently prompted sessions in one round-trip. The
+/// page grows past `limit` to include every session active after
+/// `active_since`.
 /// A corrupt session file does not hide rows from other worktrees.
 pub async fn get_recent_worktrees(
     app: AppHandle,
@@ -1178,7 +1178,6 @@ pub async fn get_recent_worktrees(
     offset: Option<usize>,
     limit: Option<usize>,
     include_session_ids: Option<Vec<String>>,
-    include_empty: bool,
     active_since: Option<u64>,
 ) -> Result<RecentWorktreesResponse, String> {
     let data = load_projects_data(&app)?;
@@ -1217,8 +1216,7 @@ pub async fn get_recent_worktrees(
         };
         let recent_sessions = sessions.sessions.into_iter().filter(|session| {
             session.archived_at.is_none()
-                && (include_empty
-                    || session.last_message_at.is_some()
+                && (session.last_message_at.is_some()
                     || session
                         .message_count
                         .unwrap_or(session.messages.len() as u32)

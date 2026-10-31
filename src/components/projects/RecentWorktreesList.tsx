@@ -20,7 +20,6 @@ import {
   Thumbtack,
 } from '@/components/icons/reicon'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { useClientPreferences } from '@/hooks/useClientPreferences'
 import {
   isModOnlyHeld,
   useModifierHintsVisible,
@@ -48,7 +47,6 @@ import { invoke } from '@/lib/transport'
 import { SwipeActionRow } from '@/components/ui/swipe-action-row'
 import { CloseWorktreeDialog } from '@/components/chat/CloseWorktreeDialog'
 import { decideSessionRowClose } from './worktree-close-decision'
-import { sessionRowTitle } from '@/lib/session-title'
 import {
   setRecentSessionPinned,
   useRecentSessionPins,
@@ -150,10 +148,6 @@ export function RecentWorktreesList({
   )
   const namingSessionIds = useChatStore(state => state.namingSessionIds)
   const pinnedSessionIds = useRecentSessionPins(projects)
-  // Single session view opens sessions only from here, so new empty sessions
-  // must be listed too.
-  const includeEmpty =
-    useClientPreferences().preferences.single_session_view_enabled ?? false
   const [limit, setLimit] = useState(INITIAL_RECENT_LIMIT)
   const [snoozedExpanded, setSnoozedExpanded] = useState(false)
   const [workingExpanded, setWorkingExpanded] = useState(false)
@@ -185,20 +179,13 @@ export function RecentWorktreesList({
     // Selection only changes the highlighted row. Keep it out of the query so
     // switching sessions cannot swap between cached list variants with
     // different ordering.
-    queryKey: [
-      'recent-worktrees',
-      projectKey,
-      limit,
-      pinnedSessionIds,
-      includeEmpty,
-    ],
+    queryKey: ['recent-worktrees', projectKey, limit, pinnedSessionIds],
     // Every non-snoozed session loads at once; only snoozed ones page.
     queryFn: () =>
       fetchRecentWorktrees(
         projects,
         limit,
         pinnedSessionIds,
-        includeEmpty,
         Math.floor(Date.now() / 1000) - SNOOZE_AFTER_SECONDS
       ),
     enabled: projects.length > 0,
@@ -208,15 +195,6 @@ export function RecentWorktreesList({
   const rows = query.data?.items ?? EMPTY_RECENT_ROWS
   const pageSize = query.data?.pageSize ?? limit
   const pinned = useMemo(() => new Set(pinnedSessionIds), [pinnedSessionIds])
-  // Single session view lists every session, so loaded rows give the open
-  // session count per worktree.
-  const sessionCountByWorktree = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const row of rows) {
-      counts.set(row.worktree.id, (counts.get(row.worktree.id) ?? 0) + 1)
-    }
-    return counts
-  }, [rows])
   // Unpinned running sessions move to a collapsible Working shelf, and
   // unpinned snoozed sessions to a collapsible Snoozed shelf below it.
   // Pinned sessions stay in the pinned group.
@@ -448,7 +426,7 @@ export function RecentWorktreesList({
   if (rows.length === 0) {
     return (
       <div className="px-3 py-6 text-center text-xs text-muted-foreground">
-        {includeEmpty ? 'No sessions yet' : 'No prompted sessions yet'}
+        No prompted sessions yet
       </div>
     )
   }
@@ -487,13 +465,6 @@ export function RecentWorktreesList({
     const isPinned = pinned.has(row.session.id)
     const project = projectsById.get(row.projectId)
     const isServer = !!project?.server
-    const title = includeEmpty
-      ? sessionRowTitle(
-          row.session.name,
-          row.worktree.name,
-          sessionCountByWorktree.get(row.worktree.id) ?? 1
-        )
-      : row.session.name
     const showPinnedSeparator =
       !isPinned && !!previous && pinned.has(previous.session.id)
     return (
@@ -547,13 +518,15 @@ export function RecentWorktreesList({
               }}
               type="button"
               aria-current={isCurrent ? 'page' : undefined}
-              aria-label={`${title}, ${isServer ? 'server ' : ''}${row.projectName}, ${row.worktree.name}, ${status.label}${isUnread ? ', unread' : ''}, ${activityLabel}`}
+              aria-label={`${row.session.name}, ${isServer ? 'server ' : ''}${row.projectName}, ${row.worktree.name}, ${status.label}${isUnread ? ', unread' : ''}, ${activityLabel}`}
               className="flex w-full flex-col gap-y-1 text-left focus-visible:outline-none"
             >
               <span className="flex items-center gap-2">
                 {project && <ProjectAvatar project={project} />}
                 <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
-                  {namingSessionIds[row.session.id] ? 'Generating…' : title}
+                  {namingSessionIds[row.session.id]
+                    ? 'Generating…'
+                    : row.session.name}
                 </span>
                 <span className="flex shrink-0 items-center justify-end gap-1.5 text-2xs empty:hidden">
                   {isUnread && (

@@ -76,17 +76,6 @@ describe('fetchRecentWorktrees', () => {
     expect(result.items.map(item => item.projectName)).toEqual(['normal'])
   })
 
-  it('asks the server for empty sessions only when requested', async () => {
-    invokeForServer.mockResolvedValue(response('local', 'project', 1))
-
-    await fetchRecentWorktrees([project('project')], 10, [])
-    await fetchRecentWorktrees([project('project')], 10, [], true)
-
-    expect(
-      invokeForServer.mock.calls.map(call => call[2].includeEmpty)
-    ).toEqual([false, true])
-  })
-
   it('grows the page to hold every session active after activeSince', async () => {
     const data = response('local', 'project', 30, 4)
     const base = data.items[0]!
@@ -97,13 +86,7 @@ describe('fetchRecentWorktrees', () => {
     }))
     invokeForServer.mockResolvedValue(data)
 
-    const result = await fetchRecentWorktrees(
-      [project('project')],
-      1,
-      [],
-      false,
-      10
-    )
+    const result = await fetchRecentWorktrees([project('project')], 1, [], 10)
 
     expect(invokeForServer.mock.calls[0]?.[2].activeSince).toBe(10)
     expect(result.pageSize).toBe(2)

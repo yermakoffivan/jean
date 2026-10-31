@@ -8,10 +8,6 @@ import { invoke } from '@/lib/transport'
 import { queryClient } from '@/lib/query-client'
 import { preferencesQueryKeys } from '@/services/preferences'
 import { chatQueryKeys } from '@/services/chat'
-import {
-  clearClientPreferencesForTests,
-  updateClientPreferences,
-} from '@/lib/client-preferences'
 import type * as EnvironmentModule from '@/lib/environment'
 import type * as PreferencesModule from '@/services/preferences'
 import { useUIStore } from '@/store/ui-store'
@@ -1188,23 +1184,14 @@ describe('ChatInput IME composition (issue #584)', () => {
     }
 
     afterEach(() => {
-      clearClientPreferencesForTests()
       queryClient.removeQueries({
         queryKey: chatQueryKeys.session('session-1'),
       })
     })
 
-    it.each([
-      [false, 0],
-      [false, 2],
-      [true, 0],
-      [true, 2],
-    ])(
-      'sends in the background and opens a new session (single view %s, %i messages)',
-      async (singleSessionView, messageCount) => {
-        updateClientPreferences({
-          single_session_view_enabled: singleSessionView,
-        })
+    it.each([0, 2])(
+      'sends in the background and opens a new session (%i messages)',
+      async messageCount => {
         setMessageCount(messageCount)
         const { created, stop } = captureCreatedSessions()
         const { textarea, onSubmit } = renderWithSubmit()

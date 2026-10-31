@@ -163,7 +163,6 @@ export async function fetchRecentWorktrees(
   projects: Project[],
   limit: number,
   includeSessionIds: string[],
-  includeEmpty = false,
   /** Unix seconds. The page grows to hold every session active after it. */
   activeSince?: number
 ): Promise<RecentWorktreesData> {
@@ -195,7 +194,6 @@ export async function fetchRecentWorktrees(
           offset: 0,
           limit,
           includeSessionIds: serverSessionIds,
-          includeEmpty,
           activeSince,
         }
       )

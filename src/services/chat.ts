@@ -873,8 +873,6 @@ export function useCreateSession() {
       queryClient.invalidateQueries({
         queryKey: chatQueryKeys.sessions(worktreeId),
       })
-      // Single session view lists empty sessions in Recent
-      queryClient.invalidateQueries({ queryKey: ['recent-worktrees'] })
     },
     onError: error => {
       if (isWsDisconnectError(error)) return

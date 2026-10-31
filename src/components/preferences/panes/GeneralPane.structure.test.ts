@@ -276,7 +276,6 @@ describe('GeneralPane settings structure', () => {
     expect(experimentalIndex).toBeGreaterThan(-1)
     expect(experimental).toContain('defaultOpen={false}')
     expect(experimental).toContain('agents_enabled')
-    expect(experimental).toContain('single_session_view_enabled')
   })
 
   it('marks the GitLab CLI settings section as beta', () => {

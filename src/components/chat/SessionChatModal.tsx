@@ -36,10 +36,7 @@ import {
   type CloseConfirmMode,
 } from './CloseWorktreeDialog'
 import { useChatStore } from '@/store/chat-store'
-import {
-  decideSessionRowClose,
-  isSessionEmpty,
-} from '@/components/projects/worktree-close-decision'
+import { isSessionEmpty } from '@/components/projects/worktree-close-decision'
 import { useTerminalStore } from '@/store/terminal-store'
 import { useBrowserStore } from '@/store/browser-store'
 import { useUIStore } from '@/store/ui-store'
@@ -53,7 +50,6 @@ import {
   useCloseSession,
 } from '@/services/chat'
 import { usePreferences } from '@/services/preferences'
-import { useClientPreferences } from '@/hooks/useClientPreferences'
 import { LOCAL_SERVER_ID } from '@/types/server-resource'
 import { usePackageScripts, type PackageScript } from '@/services/projects'
 import { useGitHubPRs } from '@/services/github'
@@ -621,10 +617,6 @@ export const SessionChatModal = memo(function SessionChatModal({
     [worktreeId]
   )
 
-  // Experimental: no tab row; the Recent list is the session switcher
-  const singleSessionView =
-    useClientPreferences().preferences.single_session_view_enabled ?? false
-
   // CMD+W: close the active session tab, or close modal if last tab
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false)
   const [closeConfirmMode, setCloseConfirmMode] =
@@ -698,49 +690,11 @@ export const SessionChatModal = memo(function SessionChatModal({
         return
       }
       const currentSession = tabSessions.find(s => s.id === currentSessionId)
-      // Single session view follows the Recent list row rules, so one CMD+W
-      // closes the session (or its worktree) instead of only leaving the view.
-      if (singleSessionView && !isServer && currentSession) {
-        const decision = decideSessionRowClose(
-          currentSession,
-          tabSessions,
-          useChatStore.getState().inputDrafts
-        )
-        if (decision === 'confirm-worktree') {
-          setCloseConfirmMode('worktree')
-          pendingCloseAction.current = () => {
-            onRequestCloseWorktree()
-            onClose()
-          }
-          setCloseConfirmOpen(true)
-          return
-        }
-        const closeAndLeave = () => {
-          handleDeleteSession(currentSession.id)
-          onClose()
-        }
-        if (decision === 'close-session') {
-          closeAndLeave()
-        } else {
-          setCloseConfirmMode('session')
-          pendingCloseAction.current = closeAndLeave
-          setCloseConfirmOpen(true)
-        }
-        return
-      }
       const sessionIsEmpty =
         !currentSession ||
         isSessionEmpty(currentSession, useChatStore.getState().inputDrafts)
       const action = () => {
-        if (singleSessionView) {
-          // Server: no worktree to close. Keep a lone empty session, the
-          // backend would only recreate it.
-          const isLoneEmpty = sessionIsEmpty && activeSessions.length <= 1
-          if (currentSessionId && !isLoneEmpty) {
-            handleDeleteSession(currentSessionId)
-          }
-          onClose()
-        } else if (activeSessions.length <= 1) {
+        if (activeSessions.length <= 1) {
           if (currentSessionId) {
             handleDeleteSession(currentSessionId)
           }
@@ -773,7 +727,6 @@ export const SessionChatModal = memo(function SessionChatModal({
     onRequestCloseWorktree,
     onClose,
     isServer,
-    singleSessionView,
   ])
 
   // Listen for toggle-session-label event (CMD+S)
@@ -1098,8 +1051,7 @@ export const SessionChatModal = memo(function SessionChatModal({
       onCloseSession={
         currentSessionId && !isServer
           ? () =>
-              // Same flow as CMD+W: confirms non-empty sessions and follows
-              // the single session view rules.
+              // Same flow as CMD+W: confirms non-empty sessions.
               window.dispatchEvent(new Event('close-session-or-worktree'))
           : undefined
       }
@@ -1177,44 +1129,6 @@ export const SessionChatModal = memo(function SessionChatModal({
       onReconnect={() => void reconnectNativeCliSession(session, worktreeId)}
       onDelete={() => removeSessionTab(session)}
     />
-  )
-
-  // Single session view: the header names the open session, since there is
-  // no tab row
-  const headerSessionTitle = singleSessionView && currentSession && (
-    <>
-      {!isMobile && <span className="mx-1.5 text-muted-foreground/40">/</span>}
-      {renamingSessionId === currentSession.id ? (
-        renderRenameInput(currentSession.id, 'md:text-sm')
-      ) : (
-        <ContextMenu>
-          <ContextMenuTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                'cursor-default',
-                isMobile
-                  ? 'inline-block max-w-full truncate align-bottom'
-                  : 'inline'
-              )}
-              onDoubleClick={() =>
-                handleStartRenameImmediate(
-                  currentSession.id,
-                  currentSession.name
-                )
-              }
-            >
-              {namingSessionIds[currentSession.id]
-                ? 'Generating…'
-                : currentSession.name}
-            </button>
-          </ContextMenuTrigger>
-          <ContextMenuContent className="w-64">
-            {renderSessionMenuItems(currentSession)}
-          </ContextMenuContent>
-        </ContextMenu>
-      )}
-    </>
   )
 
   return (
@@ -1297,15 +1211,11 @@ export const SessionChatModal = memo(function SessionChatModal({
                           </span>
                         </span>
                       )}
-                      {/* Mobile single session view shows only the session
-                          name, since the header is too narrow for both */}
-                      {!(isMobile && headerSessionTitle) &&
-                        (isServer
-                          ? project?.name
-                          : isBase
-                            ? 'Base Session'
-                            : (worktree?.name ?? 'Worktree'))}
-                      {headerSessionTitle}
+                      {isServer
+                        ? project?.name
+                        : isBase
+                          ? 'Base Session'
+                          : (worktree?.name ?? 'Worktree')}
                     </h2>
                     {worktreeMenu}
                   </div>
@@ -1339,22 +1249,6 @@ export const SessionChatModal = memo(function SessionChatModal({
                   )}
                   {!zenMode && (
                     <>
-                      {singleSessionView && !isMobile && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 shrink-0 p-0"
-                              onClick={handleCreateSession}
-                              aria-label="New session"
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>New session</TooltipContent>
-                        </Tooltip>
-                      )}
                       {currentSessionId && !project?.server && (
                         <TerminalMagicButton sessionId={currentSessionId} />
                       )}
@@ -1424,7 +1318,7 @@ export const SessionChatModal = memo(function SessionChatModal({
           )}
 
           {/* Session tabs — hidden in zen mode for an immersive chat surface */}
-          {!zenMode && !singleSessionView && showSessionTabs && (
+          {!zenMode && showSessionTabs && (
             <div
               className={cn(
                 'relative flex shrink-0 items-center gap-0.5 border-b border-border/20 pr-4',

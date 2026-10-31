@@ -36,7 +36,7 @@ describe('RecentWorktreesList structure', () => {
   })
 
   it('shows session, project, worktree, and activity without Git diff information', () => {
-    expect(source).toContain(': title}')
+    expect(source).toContain(': row.session.name}')
     expect(source).toContain('namingSessionIds[row.session.id]')
     expect(source).toContain("'Generating…'")
     expect(source).toContain('{row.projectName} · {row.worktree.name}')
@@ -108,10 +108,10 @@ describe('RecentWorktreesList structure', () => {
 
   it('fetches pinned sessions without creating a list for each selected session', () => {
     expect(source).toMatch(
-      /queryKey: \[\s*'recent-worktrees',\s*projectKey,\s*limit,\s*pinnedSessionIds,\s*includeEmpty,\s*\]/
+      /queryKey: \[\s*'recent-worktrees',\s*projectKey,\s*limit,\s*pinnedSessionIds,?\s*\]/
     )
     expect(source).toMatch(
-      /fetchRecentWorktrees\(\s*projects,\s*limit,\s*pinnedSessionIds,\s*includeEmpty,/
+      /fetchRecentWorktrees\(\s*projects,\s*limit,\s*pinnedSessionIds,/
     )
     expect(source).not.toContain(
       "queryKey: ['recent-worktrees', projectKey, limit, selectedSessionId]"
