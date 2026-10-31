@@ -109,7 +109,7 @@ export function ScriptsButton(props: ScriptsButtonProps) {
               className={raisedToolbar}
               aria-label="Scripts"
             >
-              <Play className="h-3.5 w-3.5" />
+              <Play className="size-3.5" />
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>

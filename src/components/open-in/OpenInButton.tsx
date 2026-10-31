@@ -175,11 +175,14 @@ export function OpenInButton({
         <TooltipTrigger asChild>
           <Button
             variant="ghost"
-            className="h-full rounded-r-none border-0 px-2 text-primary-foreground/85 hover:bg-primary-foreground/10 hover:text-primary-foreground dark:text-muted-foreground dark:hover:text-foreground"
+            className="h-full gap-1.5 rounded-r-none border-0 px-2 text-xs text-primary-foreground/85 hover:bg-primary-foreground/10 hover:text-primary-foreground dark:text-muted-foreground dark:hover:text-foreground"
             onClick={() => openAction(effectiveDefault)}
             aria-label={`Open in ${defaultLabel}`}
           >
-            <DefaultIcon className="h-3.5 w-3.5" />
+            <DefaultIcon className="size-3.5 @5xl/header:hidden" />
+            <span className="hidden @5xl/header:inline">
+              Open in {defaultLabel}
+            </span>
           </Button>
         </TooltipTrigger>
         <TooltipContent>Open in {defaultLabel}</TooltipContent>
