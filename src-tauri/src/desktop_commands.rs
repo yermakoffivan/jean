@@ -8,7 +8,12 @@ use tauri_plugin_dialog::DialogExt;
 use crate::CoreRuntime;
 
 async fn core_command(runtime: &CoreRuntime, command: &str, args: Value) -> Result<Value, String> {
-    jean_core::http_server::dispatch::dispatch_command(&runtime.0, command, args).await
+    jean_core::http_server::dispatch::dispatch_command_off_runtime(
+        runtime.0.clone(),
+        command.to_string(),
+        args,
+    )
+    .await
 }
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]

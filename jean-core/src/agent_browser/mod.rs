@@ -505,8 +505,8 @@ fn is_newer_version(latest: &str, current: &str) -> bool {
 /// Install agent-browser via npm into Jean app data, then download Chromium
 /// (`agent-browser install`). Idempotent reinstall/update.
 ///
-/// Performs synchronous npm/network work; WebSocket dispatch should run this
-/// on the blocking pool (see `command_should_run_on_blocking_pool`).
+/// Performs synchronous npm/network work; transports run it on the blocking
+/// pool (see `dispatch_command_off_runtime`).
 pub async fn install_agent_browser(app: AppHandle) -> Result<AgentBrowserStatus, String> {
     install_agent_browser_sync(&app)
 }

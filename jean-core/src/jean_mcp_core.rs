@@ -421,11 +421,14 @@ pub async fn call_tool(
     }))
 }
 
-// Keep the large command-dispatch future off the MCP router's stack. In debug
-// builds, inline dispatch futures in each match arm exhaust a normal test stack.
+// Off the core runtime (blocking git/CLI work) and off the MCP router's stack:
+// in debug builds, inline dispatch futures in each match arm exhaust a normal
+// test stack.
 async fn dispatch_command(app: &AppHandle, command: &str, args: Value) -> Result<Value, String> {
-    Box::pin(crate::http_server::dispatch::dispatch_command(
-        app, command, args,
+    Box::pin(crate::http_server::dispatch::dispatch_command_off_runtime(
+        app.clone(),
+        command.to_string(),
+        args,
     ))
     .await
 }

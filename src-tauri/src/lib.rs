@@ -19,9 +19,9 @@ async fn dispatch_core_command(
     command: String,
     args: Option<Value>,
 ) -> Result<Value, String> {
-    jean_core::http_server::dispatch::dispatch_command(
-        &runtime.0,
-        &command,
+    jean_core::http_server::dispatch::dispatch_command_off_runtime(
+        runtime.0.clone(),
+        command,
         args.unwrap_or_else(|| Value::Object(Default::default())),
     )
     .await

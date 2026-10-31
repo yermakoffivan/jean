@@ -104,6 +104,32 @@ fn parse_open_worktree_in_terminal_args(
     })
 }
 
+/// Entry point for transports (native IPC, WebSocket, Jean MCP): dispatch a
+/// command on tokio's blocking pool.
+///
+/// Many handlers are `async fn` but call blocking git/gh/CLI/file APIs. On the
+/// core runtime they occupy worker threads, so a few slow commands (pull,
+/// push, fetch, status polling) stall every other command and event until
+/// they finish.
+pub async fn dispatch_command_off_runtime(
+    app: AppHandle,
+    command: String,
+    args: Value,
+) -> Result<Value, String> {
+    run_on_blocking_pool(async move { dispatch_command(&app, &command, args).await }).await
+}
+
+async fn run_on_blocking_pool<F>(future: F) -> Result<Value, String>
+where
+    F: std::future::Future<Output = Result<Value, String>> + Send + 'static,
+{
+    let handle = tokio::runtime::Handle::current();
+    // Boxed: the dispatch future is large and would otherwise sit on the stack.
+    tokio::task::spawn_blocking(move || handle.block_on(Box::pin(future)))
+        .await
+        .map_err(|error| format!("Command task failed: {error}"))?
+}
+
 /// Dispatch a command by name to the corresponding Rust handler.
 /// This mirrors Tauri's invoke system but routes through WebSocket.
 ///
@@ -4692,6 +4718,33 @@ mod tests {
             }
 
             crate::platform::set_allow_native_open(previous);
+        });
+    }
+
+    #[test]
+    fn blocking_command_does_not_starve_the_runtime() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .enable_all()
+            .build()
+            .unwrap();
+
+        runtime.block_on(async {
+            let slow = tokio::spawn(run_on_blocking_pool(async {
+                std::thread::sleep(std::time::Duration::from_secs(2));
+                Ok(Value::Null)
+            }));
+            std::thread::sleep(std::time::Duration::from_millis(50));
+
+            // Wall-clock check: a blocked lone worker also stops tokio's timer.
+            let started = std::time::Instant::now();
+            assert_eq!(tokio::spawn(async { 7 }).await.unwrap(), 7);
+            assert!(
+                started.elapsed() < std::time::Duration::from_secs(1),
+                "runtime starved for {:?}",
+                started.elapsed()
+            );
+            assert_eq!(slow.await.unwrap(), Ok(Value::Null));
         });
     }
 
